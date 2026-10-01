@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5c4d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Kcal</title>
+<style>
+:root{--ink:#14211d;--bg:#f2f5f4;--card:#fff;--pri:#0f5c4d;--acc:#f2b705;--mut:#5d6b66;--line:#d9e1de}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 12px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#tot{font-size:1.5rem;font-weight:700}#sub{opacity:.85;font-size:.85rem}
+.track{height:8px;background:#ffffff40;border-radius:4px;margin-top:8px;overflow:hidden}
+#bar{height:100%;width:0;background:#fff;transition:width .3s}#bar.over{background:var(--acc)}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--pri);color:#fff}
+button.ghost{background:#e4ece9;color:var(--ink)}button.link{background:none;color:#fff;padding:4px 8px;font-size:1.3rem}
+main{padding:12px;max-width:640px;margin:auto}
+input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.card{background:var(--card);border-radius:14px;overflow:hidden;margin-bottom:12px;border:1px solid var(--line)}
+.card img,.noimg{width:100%;height:170px;object-fit:cover;display:block}
+.noimg{display:grid;place-items:center;font-size:3rem;background:#e4ece9}
+.b{padding:12px}h3{margin:0}small{color:var(--mut)}p{margin:6px 0}
+.calc{display:flex;gap:8px;align-items:center;margin:10px 0}.calc input{width:90px}.calc select{width:70px}.calc b{margin-left:auto;font-size:1.2rem}
+.row{display:flex;gap:8px}.row button{flex:1}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:14px}nav .on{color:var(--pri);font-weight:700;box-shadow:inset 0 3px var(--pri)}
+#fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;font-size:2rem;padding:0;box-shadow:0 3px 10px #0004}
+.empty{text-align:center;color:var(--mut);padding:30px}
+#day{list-style:none;padding:0}#day li{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+#day li span{flex:1}#day button{background:#e4ece9;color:var(--ink);padding:6px 10px}
+dialog{border:0;border-radius:16px;padding:16px;width:min(560px,94vw);max-height:92vh}dialog::backdrop{background:#0008}
+label{display:block;margin:10px 0 4px;font-size:.85rem;color:var(--mut)}
+.fx{border:1px dashed var(--line);border-radius:12px;padding:10px;margin:12px 0}.fx .row{margin-top:8px}
+#res div{padding:8px;border-bottom:1px solid var(--line)}#res small{display:block}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}#toast.on{opacity:1}
+#vid{width:100%;border-radius:12px;background:#000}
+</style></head><body>
+<header>
+  <div class="top"><span id="tot"></span><span id="sub"></span><button class="link" id="cfg" aria-label="Ajustes">⚙</button></div>
+  <div class="track"><div id="bar"></div></div>
+</header>
+<main>
+  <section id="cat"><input id="q" type="search" placeholder="Buscar en tus alimentos" style="margin-bottom:12px"><div id="list"></div></section>
+  <section id="hoy" hidden><label for="dt">Día</label><input type="date" id="dt"><ul id="day"></ul></section>
+</main>
+<button id="fab" aria-label="Nuevo alimento">+</button>
+<nav><button data-tab="cat" class="on">Alimentos</button><button data-tab="hoy">Diario</button></nav>
+<div id="toast"></div>
+
+<dialog id="ed">
+  <h3 id="edt">Nuevo alimento</h3>
+  <div class="fx">
+    <strong>Buscar kcal</strong>
+    <select id="ss" style="margin-top:8px"><option value="usda">Genérico (USDA, en inglés)</option><option value="off">Envasado (Open Food Facts)</option></select>
+    <div class="row"><input id="sq" placeholder="Ej: chicken breast raw"><button id="sb" style="flex:0 0 auto">Buscar</button></div>
+    <div class="row"><button id="scan" class="ghost">📷 Escanear código</button><input id="bc" inputmode="numeric" placeholder="o escribe el código"><button id="bcb" class="ghost" style="flex:0 0 auto">OK</button></div>
+    <div id="res"></div>
+  </div>
+  <label>Foto</label><input id="ff" type="file" accept="image/*"><img id="prev" alt="" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-top:6px" hidden>
+  <label for="fn">Nombre</label><input id="fn">
+  <label for="fd">Descripción</label><textarea id="fd" rows="2"></textarea>
+  <label for="fk">kcal por 100 g</label><input id="fk" type="number" inputmode="decimal" min="0" step="any">
+  <label for="fs">Estado del alimento</label><select id="fs"><option value="">No aplica</option><option>crudo</option><option>cocinado</option></select>
+  <div class="row" style="margin-top:16px"><button id="cancel" class="ghost">Cancelar</button><button id="save">Guardar</button></div>
+  <button id="del" class="ghost" style="width:100%;margin-top:8px" hidden>Eliminar alimento</button>
+</dialog>
+
+<dialog id="scd"><video id="vid" playsinline muted></video><button id="scc" class="ghost" style="width:100%;margin-top:10px">Cancelar</button></dialog>
+
+<dialog id="cf">
+  <h3>Ajustes</h3>
+  <label for="cg">Objetivo diario (kcal)</label><input id="cg" type="number" inputmode="numeric">
+  <label for="ck">Clave API de USDA (gratuita en fdc.nal.usda.gov)</label><input id="ck" placeholder="DEMO_KEY por defecto">
+  <div class="row" style="margin-top:12px"><button id="exp" class="ghost">Exportar copia</button><button id="imp" class="ghost">Importar copia</button></div>
+  <input id="impf" type="file" accept="application/json" hidden>
+  <div class="row" style="margin-top:16px"><button id="cfc" class="ghost">Cerrar</button><button id="cfs">Guardar</button></div>
+</dialog>
+
+<script>
+// ---- Nutrientes: para añadir más (proteína, grasa...) basta con ampliar esta lista y los campos del formulario
+const NUTRIENTS=[{k:'kcal',label:'kcal'}];
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Date().toLocaleDateString('sv');
+const goal=()=>+localStorage.goal||2000;
+let db,foods=[],log=[],cur=today(),tab='cat',edit=null,photo='',srcSel='Manual',results=[];
+
+// ---- Base de datos local (IndexedDB)
+const openDB=()=>new Promise((res,rej)=>{const r=indexedDB.open('kcal',1);r.onupgradeneeded=()=>{r.result.createObjectStore('foods',{keyPath:'id'});r.result.createObjectStore('log',{keyPath:'id'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const tx=(s,m,f)=>new Promise((res,rej)=>{const t=db.transaction(s,m);const o=f(t.objectStore(s));t.oncomplete=()=>res(o.result);t.onerror=()=>rej(t.error)});
+const all=s=>tx(s,'readonly',o=>o.getAll());
+const put=(s,v)=>tx(s,'readwrite',o=>o.put(v));
+const del=(s,k)=>tx(s,'readwrite',o=>o.delete(k));
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+const grams=(w,u)=>(+w||0)*(u==='kg'?1000:1);
+const calc=(f,w,u)=>Math.round(grams(w,u)*f.n.kcal/100);
+
+// ---- Render
+const card=f=>{const w=f.w||100,u=f.u||'g';return `<article class="card" data-id="${f.id}">${f.img?`<img src="${f.img}" alt="">`:'<div class="noimg">🍽️</div>'}<div class="b"><h3>${esc(f.name)}</h3><small>${f.n.kcal} kcal/100 g${f.state?' · '+f.state:''} · ${esc(f.src||'Manual')}</small>${f.desc?`<p>${esc(f.desc)}</p>`:''}<div class="calc"><input type="number" inputmode="decimal" min="0" step="any" value="${w}"><select><option${u==='g'?' selected':''}>g</option><option${u==='kg'?' selected':''}>kg</option></select><b>${calc(f,w,u)} kcal</b></div><div class="row"><button data-act="add">+ Añadir al diario</button><button data-act="edit" class="ghost">Editar</button></div></div></article>`};
+
+function render(){
+  const day=log.filter(e=>e.date===cur),tot=day.reduce((s,e)=>s+e.kcal,0),g=goal();
+  $('#tot').textContent=`${tot} / ${g} kcal`;
+  $('#bar').style.width=Math.min(100,tot/g*100)+'%';$('#bar').classList.toggle('over',tot>g);
+  $('#sub').textContent=(cur===today()?'Hoy':cur)+(tot>g?` · +${tot-g}`:` · quedan ${g-tot}`);
+  $('#cat').hidden=tab!=='cat';$('#hoy').hidden=tab!=='hoy';$('#fab').hidden=tab!=='cat';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  $('#dt').value=cur;
+  const q=$('#q').value.toLowerCase();
+  $('#list').innerHTML=foods.filter(f=>f.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).map(card).join('')||'<p class="empty">Aún no hay alimentos. Pulsa + para añadir el primero.</p>';
+  $('#day').innerHTML=day.map(e=>`<li><span>${esc(e.name)} · ${Math.round(e.grams)} g</span><b>${e.kcal} kcal</b><button data-del="${e.id}">✕</button></li>`).join('')||'<p class="empty">Nada registrado este día.</p>';
+}
+
+// ---- Eventos del catálogo
+$('#list').addEventListener('input',ev=>{const c=ev.target.closest('.card');if(!c)return;const f=foods.find(x=>x.id===c.dataset.id);c.querySelector('b').textContent=calc(f,c.querySelector('input').value,c.querySelector('select').value)+' kcal'});
+$('#list').addEventListener('change',ev=>{const c=ev.target.closest('.card');if(!c)return;const f=foods.find(x=>x.id===c.dataset.id);f.w=c.querySelector('input').value;f.u=c.querySelector('select').value;put('foods',f)});
+$('#list').addEventListener('click',async ev=>{
+  const a=ev.target.dataset.act;if(!a)return;
+  const c=ev.target.closest('.card'),f=foods.find(x=>x.id===c.dataset.id);
+  if(a==='edit')return openEdit(f);
+  const w=c.querySelector('input').value,u=c.querySelector('select').value,g=grams(w,u);
+  if(!g)return toast('Indica un peso');
+  await put('log',{id:crypto.randomUUID(),date:cur,foodId:f.id,name:f.name,grams:g,kcal:calc(f,w,u)});
+  log=await all('log');render();toast('Añadido a '+(cur===today()?'hoy':cur));
+});
+$('#day').addEventListener('click',async ev=>{const id=ev.target.dataset.del;if(!id)return;await del('log',id);log=await all('log');render()});
+$('#q').oninput=render;
+$('#dt').onchange=e=>{cur=e.target.value||today();render()};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+$('#fab').onclick=()=>openEdit(null);
+
+// ---- Editor de alimento
+function setPhoto(p){photo=p;$('#prev').src=p;$('#prev').hidden=!p}
+function openEdit(f){
+  edit=f;srcSel=f?.src||'Manual';results=[];$('#res').innerHTML='';
+  $('#edt').textContent=f?'Editar alimento':'Nuevo alimento';
+  $('#fn').value=f?.name||'';$('#fd').value=f?.desc||'';$('#fk').value=f?.n.kcal??'';$('#fs').value=f?.state||'';
+  $('#sq').value='';$('#bc').value='';$('#ff').value='';setPhoto(f?.img||'');$('#del').hidden=!f;$('#ed').showModal();
+}
+function compress(file){return new Promise(r=>{const i=new Image();i.onload=()=>{const s=Math.min(1,640/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(i.src);r(c.toDataURL('image/jpeg',.7))};i.src=URL.createObjectURL(file)})}
+$('#ff').onchange=async e=>{if(e.target.files[0])setPhoto(await compress(e.target.files[0]))};
+$('#cancel').onclick=()=>$('#ed').close();
+$('#save').onclick=async()=>{
+  const name=$('#fn').value.trim(),k=parseFloat($('#fk').value);
+  if(!name||isNaN(k)||k<0)return toast('Nombre y kcal por 100 g son obligatorios');
+  const f={...(edit||{}),id:edit?.id||crypto.randomUUID(),name,desc:$('#fd').value.trim(),img:photo,state:$('#fs').value,src:srcSel,n:{...(edit?.n||{}),kcal:k},created:edit?.created||Date.now()};
+  await put('foods',f);foods=await all('foods');$('#ed').close();render();
+};
+$('#del').onclick=async()=>{if(!confirm('¿Eliminar este alimento? Los registros del diario se conservan.'))return;await del('foods',edit.id);foods=await all('foods');$('#ed').close();render()};
+
+// ---- APIs
+async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json()}
+const offName=p=>[p.product_name,p.brands].filter(Boolean).join(' · ');
+const API_KEY = 'mHHdGTuyGxmf66QfMxy8gTahj0ravgaZamNBHNEh';
+async function searchOFF(q){const j=await getJSON(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=10&fields=product_name,brands,nutriments`);return (j.products||[]).map(p=>({name:offName(p),kcal:p.nutriments?.['energy-kcal_100g'],src:'Open Food Facts'})).filter(x=>x.name&&x.kcal!=null)}
+async function barcodeOFF(c){const j=await getJSON(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(c)}.json?fields=product_name,brands,nutriments`);if(j.status!==1)return null;return {name:offName(j.product),kcal:j.product.nutriments?.['energy-kcal_100g'],src:'Open Food Facts'}}
+async function searchUSDA(q){const k=localStorage.usdaKey||'API_KEY';const j=await getJSON(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&dataType=Foundation,SR%20Legacy&pageSize=10&api_key=${k}`);return (j.foods||[]).map(f=>({name:f.description,kcal:(f.foodNutrients||[]).find(n=>[1008,2047,2048].includes(n.nutrientId))?.value,src:'USDA'})).filter(x=>x.kcal!=null)}
+
+function fill(r){
+  if(r.kcal==null)return toast('Sin kcal en la base de datos: introdúcelas a mano');
+  if(!$('#fn').value.trim())$('#fn').value=r.name;
+  $('#fk').value=Math.round(r.kcal*10)/10;srcSel=r.src;$('#res').innerHTML='';toast('kcal cargadas: '+r.src);
+}
+$('#sb').onclick=async()=>{
+  const q=($('#sq').value||$('#fn').value).trim();if(!q)return toast('Escribe qué buscar');
+  $('#res').innerHTML='<small>Buscando…</small>';
+  try{results=await($('#ss').value==='off'?searchOFF(q):searchUSDA(q));
+    $('#res').innerHTML=results.map((r,i)=>`<div data-i="${i}">${esc(r.name)}<small>${Math.round(r.kcal)} kcal/100 g · ${r.src}</small></div>`).join('')||'<small>Sin resultados</small>'}
+  catch{$('#res').innerHTML='<small>Error de red o límite de la API. Inténtalo de nuevo.</small>'}
+};
+$('#res').onclick=e=>{const d=e.target.closest('[data-i]');if(d)fill(results[d.dataset.i])};
+async function lookup(code){
+  if(!code)return;toast('Buscando código…');
+  try{const r=await barcodeOFF(code);r?fill(r):toast('Código no encontrado en Open Food Facts')}catch{toast('Error de red')}
+}
+$('#bcb').onclick=()=>lookup($('#bc').value.trim());
+
+// ---- Escáner de código de barras
+let stream,scanning=false;
+$('#scd').addEventListener('close',()=>{scanning=false;stream?.getTracks().forEach(t=>t.stop())});
+$('#scc').onclick=()=>$('#scd').close();
+$('#scan').onclick=async()=>{
+  if(!('BarcodeDetector' in window))return toast('Este navegador no soporta escáner: escribe el código');
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})}catch{return toast('Sin acceso a la cámara')}
+  const v=$('#vid');v.srcObject=stream;await v.play();$('#scd').showModal();scanning=true;
+  const d=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+  while(scanning){try{const r=await d.detect(v);if(r.length){const c=r[0].rawValue;$('#scd').close();$('#bc').value=c;lookup(c);break}}catch{}await new Promise(r=>setTimeout(r,250))}
+};
+
+// ---- Ajustes y copia de seguridad
+$('#cfg').onclick=()=>{$('#cg').value=goal();$('#ck').value=localStorage.usdaKey||'';$('#cf').showModal()};
+$('#cfc').onclick=()=>$('#cf').close();
+$('#cfs').onclick=()=>{localStorage.goal=+$('#cg').value||2000;localStorage.usdaKey=$('#ck').value.trim();$('#cf').close();render()};
+$('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({v:1,goal:goal(),foods,log})],{type:'application/json'}));a.download=`kcal-copia-${today()}.json`;a.click()};
+$('#imp').onclick=()=>$('#impf').click();
+$('#impf').onchange=async e=>{
+  try{const d=JSON.parse(await e.target.files[0].text());
+    for(const f of d.foods||[])await put('foods',f);for(const l of d.log||[])await put('log',l);
+    if(d.goal)localStorage.goal=d.goal;foods=await all('foods');log=await all('log');$('#cf').close();render();toast('Copia importada')}
+  catch{toast('Archivo no válido')}
+};
+
+// ---- Inicio
+(async()=>{db=await openDB();foods=await all('foods');log=await all('log');render();navigator.storage?.persist?.();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js')})();
+</script>
+</body></html>
